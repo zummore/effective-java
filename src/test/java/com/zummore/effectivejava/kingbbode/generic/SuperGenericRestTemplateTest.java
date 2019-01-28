@@ -2,6 +2,7 @@ package com.zummore.effectivejava.kingbbode.generic;
 
 import com.zummore.effectivejava.kingbbode.generic.rest.SuperGenericRestTemplate;
 import com.zummore.effectivejava.kingbbode.generic.rest.SuperGenericWrapRestTemplate;
+import com.zummore.effectivejava.kingbbode.generic.rest.argument.GenericParameterRestTemplate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class SuperGenericRestTemplateTest {
 
+    private GenericParameterRestTemplate genericRestTemplate = new GenericParameterRestTemplate(new RestTemplateBuilder().build());
     private SuperGenericRestTemplate<TestClass> superGenericRestTemplate;
     private SuperGenericWrapRestTemplate<TestClass> superGenericWrapRestTemplate;
     private SuperRestTemplate superRestTemplate;
@@ -66,8 +68,18 @@ public class SuperGenericRestTemplateTest {
     }
 
     @Test
-    @DisplayName("Generic <T> -> new ParameterizedTypeReference<T> 는 안됨.")
+    @DisplayName("Generic <T> -> new ParameterizedTypeReference<T> 는 Runtime 에서 T 를 알 수 있는 방법이 없다.")
     void getForClassDirectParameterized() {
+        assertThrows(ClassCastException.class , () -> {
+            TestClass testClass = genericRestTemplate.getForClassDirectParameterized("https://jsonplaceholder.typicode.com/todos/1", TestClass.class);
+            System.out.println(testClass);
+        });
+
+        assertThrows(ClassCastException.class , () -> {
+            TestClass testClass = genericRestTemplate.getForParameterizedByClass("https://jsonplaceholder.typicode.com/todos/1", TestClass.class);
+            System.out.println(testClass);
+        });
+
         assertThrows(ClassCastException.class , () -> {
             TestClass testClass = superGenericRestTemplate.getForParameterizedByGeneric();
             System.out.println(testClass);
@@ -119,22 +131,6 @@ public class SuperGenericRestTemplateTest {
         });
     }
 
-    @Test
-    @DisplayName("new ParameterizedTypeReference<T> 으로 바로 하면 됨.")
-    void getForParameterized() {
-        assertDoesNotThrow(() -> {
-            TestClass testClass = superGenericRestTemplate.getForParameterized(new ParameterizedTypeReference<TestClass>() {
-            });
-            System.out.println(testClass);
-        });
-
-        assertDoesNotThrow(() -> {
-            List<TestClass> testClass = superGenericRestTemplateForList.getForParameterized(new ParameterizedTypeReference<List<TestClass>>() {
-            });
-            testClass.forEach(System.out::println);
-        });
-    }
-
     public static class SuperRestTemplateWithParameterized extends SuperGenericRestTemplate<TestClass> {
         public SuperRestTemplateWithParameterized(RestTemplate restTemplate, String url) {
             super(restTemplate, url, new ParameterizedTypeReference<TestClass>() {});
@@ -151,8 +147,32 @@ public class SuperGenericRestTemplateTest {
     private SuperRestTemplateWithParameterizedForList superRestTemplateWithParameterizedForList = new SuperRestTemplateWithParameterizedForList(new RestTemplateBuilder().build(), "https://jsonplaceholder.typicode.com/posts");
 
     @Test
-    @DisplayName("Generic <T> -> new ParameterizedTypeReference<T> 는 안됨.")
-    void getConstructorParameterized() {
+    @DisplayName("new ParameterizedTypeReference<T> 으로 Compile 에서부터 T 를 추론할 수 있도록 해야한다.")
+    void getForParameterized() {
+        assertDoesNotThrow(() -> {
+            TestClass testClass = superGenericRestTemplate.getForParameterized(new ParameterizedTypeReference<TestClass>() {
+            });
+            System.out.println(testClass);
+        });
+
+        assertDoesNotThrow(() -> {
+            List<TestClass> testClass = superGenericRestTemplateForList.getForParameterized(new ParameterizedTypeReference<List<TestClass>>() {
+            });
+            testClass.forEach(System.out::println);
+        });
+
+        assertDoesNotThrow(() -> {
+            TestClass testClass = genericRestTemplate.getForParameterized("https://jsonplaceholder.typicode.com/todos/1", new ParameterizedTypeReference<TestClass>() {
+            });
+            System.out.println(testClass);
+        });
+
+        assertDoesNotThrow(() -> {
+            List<TestClass> testClasses = genericRestTemplate.getForParameterized("https://jsonplaceholder.typicode.com/posts", new ParameterizedTypeReference<List<TestClass>>() {
+            });
+            testClasses.forEach(System.out::println);
+        });
+
         assertThrows(ClassCastException.class , () -> {
             TestClass testClass = superRestTemplateWithParameterized.getForParameterizedByGeneric();
             System.out.println(testClass);
